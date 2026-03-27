@@ -3,19 +3,30 @@ export default {
     const url = new URL(request.url);
     const p = url.searchParams;
 
-    // 1. 参数缩减与解析
+    // 1. 参数获取与缩减
     let i = p.get('i');
     const d = p.get('d');
     const n = p.get('n') || '1';
     const f = p.get('f') || 'js';
-    const r = p.get('r') || 'UHD';
+    let r = p.get('r') || 'UHD';
 
-    // 日期转换逻辑
+    // 2. 分辨率别名逻辑 (支持 4k, 1080p, 1920*1080, 1920x1080 等)
+    const resMap = {
+      '4k': 'UHD',
+      'uhd': 'UHD',
+      '1080p': '1920x1080'
+    };
+    
+    // 先处理常用别名
+    r = resMap[r.toLowerCase()] || r;
+    // 处理 1920*1080 这种带星号的情况，统一转为 Bing 识别的 x
+    r = r.replace('*', 'x');
+
+    // 3. 日期转换逻辑 (保持不变)
     if (d) {
       const target = new Date(d.substring(0, 4), parseInt(d.substring(4, 6)) - 1, d.substring(6, 8));
       const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      target.setHours(0, 0, 0, 0);
+      today.setHours(0, 0, 0, 0); target.setHours(0, 0, 0, 0);
       i = Math.floor((today - target) / 86400000).toString();
     }
     i = i || '0';
@@ -27,25 +38,22 @@ export default {
       const { images } = await resp.json();
 
       const data = images.map(img => ({
-        url: `https://www.bing.com${img.urlbase}_${r === '1080p' ? '1920x1080' : r}.jpg`,
+        url: `https://www.bing.com${img.urlbase}_${r}.jpg`,
         t: img.title,
         desc: img.copyright,
         date: img.startdate
       }));
 
-      // 2. 多模式输出逻辑
-      // 模式 A: 纯文字介绍 (用于脚本读取或通知推送)
+      // 4. 输出模式
       if (f === 'txt') {
         const text = data.map(item => `${item.t}\n${item.desc}`).join('\n\n');
         return new Response(text, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
       }
 
-      // 模式 B: 直接重定向到图片
       if (f === 'img') {
         return Response.redirect(data[0].url, 302);
       }
 
-      // 模式 C: 极简 JSON
       return new Response(JSON.stringify(data), {
         headers: { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' }
       });
