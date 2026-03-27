@@ -1,1 +1,1 @@
-# bing-img
+bing-img api
