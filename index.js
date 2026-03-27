@@ -14,7 +14,7 @@ export default {
     const resMap = {
       '4k': 'UHD',
       'uhd': 'UHD',
-      '4096×2160': 'UHD',
+      '4096x2160': 'UHD',
       '1080p': '1920x1080'
     };
     
